@@ -1,0 +1,18 @@
+{
+  "name": "apiflow",
+  "version": "1.0.0",
+  "description": "APIFlow — Visual API Workflow Automation and Testing Platform",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "start \"APIFlow Backend\" cmd /k \"cd backend && npm run dev\" && start \"APIFlow Frontend\" cmd /k \"cd frontend && npm run dev\"",
+    "build:backend": "npm run build --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test:backend": "npm test --prefix backend",
+    "test:frontend": "npm test --prefix frontend",
+    "test": "npm run test:backend && npm run test:frontend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+  }
+}
