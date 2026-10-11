@@ -26,6 +26,14 @@ describe('Variable Interpolation & Extraction', () => {
       expect(result).toBe('limit=50&active=true');
       expect(missingVars).toHaveLength(0);
     });
+
+    it('correctly interpolates 0, false, and empty string without marking them as missing', () => {
+      const template = 'count={{zero}}&enabled={{flag}}&prefix={{empty}}';
+      const context = { zero: 0, flag: false, empty: '' };
+      const { result, missingVars } = interpolateVariables(template, context);
+      expect(result).toBe('count=0&enabled=false&prefix=');
+      expect(missingVars).toHaveLength(0);
+    });
   });
 
   describe('extractJsonPath', () => {
@@ -61,6 +69,22 @@ describe('Variable Interpolation & Extraction', () => {
       expect(extractJsonPath(payload, '$.user.nonexistent')).toEqual({ value: undefined, found: false });
       expect(extractJsonPath(payload, '$.items[99]')).toEqual({ value: undefined, found: false });
       expect(extractJsonPath(payload, 'invalid_path')).toEqual({ value: undefined, found: false });
+    });
+
+    it('handles null, zero, false, empty string, and keys with hyphens correctly', () => {
+      const specialPayload = {
+        'api-key': 'secret_123',
+        nullVal: null,
+        zeroVal: 0,
+        falseVal: false,
+        emptyStr: '',
+      };
+
+      expect(extractJsonPath(specialPayload, '$["api-key"]')).toEqual({ value: 'secret_123', found: true });
+      expect(extractJsonPath(specialPayload, '$.nullVal')).toEqual({ value: null, found: true });
+      expect(extractJsonPath(specialPayload, '$.zeroVal')).toEqual({ value: 0, found: true });
+      expect(extractJsonPath(specialPayload, '$.falseVal')).toEqual({ value: false, found: true });
+      expect(extractJsonPath(specialPayload, '$.emptyStr')).toEqual({ value: '', found: true });
     });
   });
 

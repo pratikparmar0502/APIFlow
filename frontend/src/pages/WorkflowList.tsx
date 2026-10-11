@@ -29,7 +29,12 @@ export const WorkflowList: React.FC = () => {
     loading,
     deleteWorkflow,
     duplicateWorkflow,
+    refresh,
   } = useWorkflows();
+
+  React.useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   const filtered = workflows.filter((w) =>
     (w.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||

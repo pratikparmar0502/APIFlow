@@ -89,14 +89,17 @@ export const Settings: React.FC = () => {
 
             <div className="pt-2">
               <label className="text-xs font-medium text-text-secondary block mb-1">
-                API Base Path
+                API Base Path (Configured)
               </label>
               <input
                 type="text"
                 value={apiEndpoint}
-                onChange={(e) => setApiEndpoint(e.target.value)}
-                className="w-full max-w-md bg-secondary-bg border border-border rounded-lg px-3 py-2 text-xs font-mono text-text-primary focus:border-yellow focus:outline-none"
+                readOnly
+                className="w-full max-w-md bg-secondary-bg/60 border border-border rounded-lg px-3 py-2 text-xs font-mono text-text-secondary cursor-not-allowed focus:outline-none"
               />
+              <p className="text-[11px] text-text-secondary/70 mt-1.5">
+                The API base route is configured via the local Vite proxy pointing to the APIFlow Express backend.
+              </p>
             </div>
           </div>
         </div>

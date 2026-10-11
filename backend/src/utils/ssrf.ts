@@ -115,6 +115,11 @@ export async function validateOutboundUrl(urlString: string): Promise<void> {
     return;
   }
 
+  // Detect and reject hex or octal IP obfuscation attempts (e.g. 0x7f.1, 0177.0.0.1, integer IP)
+  if (/^0x[0-9a-fA-F]+(\.[0-9a-fA-FxX]+)*$/i.test(hostname) || /^\d+$/.test(hostname)) {
+    throw new Error(`Obfuscated IP formats are not allowed`);
+  }
+
   // IPv6 in brackets
   const ipv6Host = hostname.startsWith('[') ? hostname.slice(1, -1) : hostname;
   if (Address6.isValid(ipv6Host)) {
@@ -124,9 +129,12 @@ export async function validateOutboundUrl(urlString: string): Promise<void> {
     return;
   }
 
-  // DNS resolution check
+  // DNS resolution check: resolve all A and AAAA records and block if any resolved address is private
   try {
     const addresses = await dns.lookup(hostname, { all: true });
+    if (!addresses || addresses.length === 0) {
+      throw new Error(`Cannot resolve hostname: ${hostname}`);
+    }
     for (const addr of addresses) {
       if (addr.family === 4 && isPrivateIPv4(addr.address)) {
         throw new Error(`DNS resolved to a private IP address: ${addr.address}`);

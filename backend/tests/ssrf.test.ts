@@ -25,6 +25,11 @@ describe('SSRF Protection', () => {
     await expect(validateOutboundUrl('http://metadata.google.internal')).rejects.toThrow();
   });
 
+  it('blocks obfuscated IP formats like hex and integer IPs', async () => {
+    await expect(validateOutboundUrl('http://0x7f.1')).rejects.toThrow();
+    await expect(validateOutboundUrl('http://2130706433')).rejects.toThrow('Destination IP address is not allowed');
+  });
+
   it('allows safe public URLs', async () => {
     // DNS check for public domains
     await expect(validateOutboundUrl('https://httpbin.org/get')).resolves.toBeUndefined();

@@ -38,4 +38,16 @@ describe('Request Executor Utilities', () => {
       Cookie: '[REDACTED]',
     });
   });
+
+  it('correctly handles request timeouts and produces descriptive error', async () => {
+    const { executeRequest } = await import('../src/services/requestExecutor');
+    // Using an unreachable public IP or a delayed request with 100ms timeout
+    const result = await executeRequest({
+      url: 'https://httpbin.org/delay/5',
+      method: 'GET',
+      timeoutMs: 100,
+    });
+    expect(result.status).toBe(0);
+    expect(result.error).toMatch(/timed out after 100ms|blocked/i);
+  });
 });

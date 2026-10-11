@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { Dashboard } from '../src/pages/Dashboard';
@@ -29,7 +29,9 @@ describe('Dashboard Component', () => {
     );
 
     expect(screen.getByText(/Visual API Automation Platform/i)).toBeInTheDocument();
-    expect(screen.getByText(/Total Workflows/i)).toBeInTheDocument();
-    expect(screen.getByText(/Create Workflow/i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText(/Total Workflows/i)).toBeInTheDocument();
+      expect(screen.getByText(/Create Workflow/i)).toBeInTheDocument();
+    });
   });
 });

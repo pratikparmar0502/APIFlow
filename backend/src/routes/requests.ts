@@ -19,6 +19,17 @@ const HeaderSchema = z.object({
   enabled: z.boolean().default(true),
 });
 
+const RawHeaderSchema = z.union([
+  z.array(HeaderSchema),
+  z.record(z.string()).transform((obj) =>
+    Object.entries(obj).map(([key, value]) => ({
+      key,
+      value,
+      enabled: true,
+    }))
+  ),
+]).default([]);
+
 const AssertionConfigSchema = z.object({
   id: z.string(),
   type: z.enum(['status', 'jsonPath', 'exists', 'typeCheck', 'responseTime']),
@@ -40,7 +51,7 @@ const ExecuteRequestSchema = z.object({
   url: z.string(),
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD']),
   queryParams: z.array(QueryParamSchema).default([]),
-  headers: z.array(HeaderSchema).default([]),
+  headers: RawHeaderSchema,
   body: z.string().optional(),
   timeoutMs: z.number().min(100).max(60000).optional(),
   assertions: z.array(AssertionConfigSchema).default([]),
@@ -53,32 +64,49 @@ router.post('/execute', async (req: Request, res: Response, next: NextFunction) 
     const input = ExecuteRequestSchema.parse(req.body);
     const variables = input.variables;
 
-    // Interpolate variables
+    // Interpolate variables and track all missing variables
     const { result: interpolatedUrl, missingVars: urlMissing } = interpolateVariables(input.url, variables);
-    if (urlMissing.length > 0) {
-      res.status(400).json({
-        code: 'MISSING_VARIABLES',
-        message: `Missing variables in URL: ${urlMissing.join(', ')}`,
-      });
-      return;
-    }
+    const allMissingVars = new Set<string>(urlMissing);
 
-    const resolvedParams = input.queryParams.map(p => ({
-      ...p,
-      value: interpolateVariables(p.value, variables).result,
-      key: interpolateVariables(p.key, variables).result,
-    }));
+    const resolvedParams = input.queryParams.map(p => {
+      const keyInterpolated = interpolateVariables(p.key, variables);
+      const valInterpolated = interpolateVariables(p.value, variables);
+      keyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      valInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      return {
+        ...p,
+        key: keyInterpolated.result,
+        value: valInterpolated.result,
+      };
+    });
     const finalUrl = buildFinalUrl(interpolatedUrl, resolvedParams);
 
-    const resolvedHeaders = input.headers.map(h => ({
-      ...h,
-      value: interpolateVariables(h.value, variables).result,
-    }));
+    const resolvedHeaders = input.headers.map(h => {
+      const keyInterpolated = interpolateVariables(h.key, variables);
+      const valInterpolated = interpolateVariables(h.value, variables);
+      keyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      valInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      return {
+        ...h,
+        key: keyInterpolated.result,
+        value: valInterpolated.result,
+      };
+    });
     const headerMap = buildHeaders(resolvedHeaders);
 
     let resolvedBody: string | undefined;
     if (input.body) {
-      resolvedBody = interpolateVariables(input.body, variables).result;
+      const bodyInterpolated = interpolateVariables(input.body, variables);
+      bodyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      resolvedBody = bodyInterpolated.result;
+    }
+
+    if (allMissingVars.size > 0) {
+      res.status(400).json({
+        code: 'MISSING_VARIABLES',
+        message: `Missing variables in request: ${Array.from(allMissingVars).join(', ')}`,
+      });
+      return;
     }
 
     const response = await executeRequest({

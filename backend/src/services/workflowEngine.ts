@@ -171,36 +171,55 @@ async function executeStep(
   try {
     const cfg = node.config;
 
+    // Track missing variables across all locations
+    const allMissingVars = new Set<string>();
+
     // Interpolate URL
     const { result: interpolatedUrl, missingVars: urlMissing } = interpolateVariables(cfg.url, variables);
-    if (urlMissing.length > 0) {
-      stepResult.status = 'failed';
-      stepResult.error = `Missing variables in URL: ${urlMissing.join(', ')}`;
-      stepResult.completedAt = new Date();
-      stepResult.durationMs = Date.now() - startedAt.getTime();
-      return stepResult;
-    }
+    urlMissing.forEach(v => allMissingVars.add(v));
 
     // Build final URL with query params
-    const resolvedParams = (cfg.queryParams || []).map(p => ({
-      ...p,
-      value: interpolateVariables(p.value, variables).result,
-      key: interpolateVariables(p.key, variables).result,
-    }));
+    const resolvedParams = (cfg.queryParams || []).map(p => {
+      const keyInterpolated = interpolateVariables(p.key, variables);
+      const valInterpolated = interpolateVariables(p.value, variables);
+      keyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      valInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      return {
+        ...p,
+        key: keyInterpolated.result,
+        value: valInterpolated.result,
+      };
+    });
     const finalUrl = buildFinalUrl(interpolatedUrl, resolvedParams);
 
     // Build headers
-    const resolvedHeaders = (cfg.headers || []).map(h => ({
-      ...h,
-      value: interpolateVariables(h.value, variables).result,
-    }));
+    const resolvedHeaders = (cfg.headers || []).map(h => {
+      const keyInterpolated = interpolateVariables(h.key, variables);
+      const valInterpolated = interpolateVariables(h.value, variables);
+      keyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      valInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      return {
+        ...h,
+        key: keyInterpolated.result,
+        value: valInterpolated.result,
+      };
+    });
     const headerMap = buildHeaders(resolvedHeaders);
 
     // Interpolate body
     let resolvedBody: string | undefined;
     if (cfg.body) {
-      const { result } = interpolateVariables(cfg.body, variables);
-      resolvedBody = result;
+      const bodyInterpolated = interpolateVariables(cfg.body, variables);
+      bodyInterpolated.missingVars.forEach(v => allMissingVars.add(v));
+      resolvedBody = bodyInterpolated.result;
+    }
+
+    if (allMissingVars.size > 0) {
+      stepResult.status = 'failed';
+      stepResult.error = `Missing variables in request: ${Array.from(allMissingVars).join(', ')}`;
+      stepResult.completedAt = new Date();
+      stepResult.durationMs = Date.now() - startedAt.getTime();
+      return stepResult;
     }
 
     stepResult.requestUrl = finalUrl;

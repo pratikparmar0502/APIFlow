@@ -1,5 +1,6 @@
 import apiClient from './client';
 import { Workflow, PaginatedResponse, Execution } from '../types';
+import { getExecution } from './executions';
 
 export interface GetWorkflowsParams {
   page?: number;
@@ -127,7 +128,6 @@ export const executeWorkflow = async (
   );
   const data = response.data;
   if ('executionId' in data && data.executionId) {
-    const { getExecution } = await import('./executions');
     return getExecution(data.executionId);
   }
   if ('data' in data && data.data) {

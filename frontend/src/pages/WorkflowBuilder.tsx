@@ -26,10 +26,12 @@ import {
   AlertCircle,
   Clock,
   CheckCircle2,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { RequestNode } from '../components/workflow/RequestNode';
 import { NodeConfigPanel } from '../components/workflow/NodeConfigPanel';
 import { Button } from '../components/ui/Button';
+import { Dialog } from '../components/ui/Dialog';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Spinner } from '../components/ui/Spinner';
 import { JsonViewer } from '../components/ui/JsonViewer';
@@ -48,6 +50,9 @@ export const WorkflowBuilder: React.FC = () => {
 
   const [workflowName, setWorkflowName] = useState('Untitled Workflow');
   const [workflowDesc, setWorkflowDesc] = useState('');
+  const [continueOnFailure, setContinueOnFailure] = useState(false);
+  const [maxExecutionTimeMs, setMaxExecutionTimeMs] = useState(60000);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -107,6 +112,10 @@ export const WorkflowBuilder: React.FC = () => {
         const data = await getWorkflow(id);
         setWorkflowName(data.name || 'Untitled Workflow');
         setWorkflowDesc(data.description || '');
+        if (data.settings) {
+          setContinueOnFailure(Boolean(data.settings.continueOnFailure));
+          setMaxExecutionTimeMs(data.settings.maxExecutionTimeMs || 60000);
+        }
 
         const mappedNodes: Node[] = (data.nodes || []).map((n) => ({
           id: n.id,
@@ -266,8 +275,8 @@ export const WorkflowBuilder: React.FC = () => {
         nodes: workflowNodes,
         edges: workflowEdges,
         settings: {
-          continueOnFailure: false,
-          maxExecutionTimeMs: 60000,
+          continueOnFailure,
+          maxExecutionTimeMs,
         },
       };
 
@@ -336,7 +345,9 @@ export const WorkflowBuilder: React.FC = () => {
       if (result.status === 'passed') {
         toast.success('Workflow completed successfully!');
       } else {
-        toast.error(`Workflow ${result.status}`);
+        const failedStep = result.stepResults?.find((s) => s.status === 'failed');
+        const reason = failedStep?.error ? `: ${failedStep.error}` : '';
+        toast.error(`Workflow ${result.status}${reason}`);
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Execution failed';
@@ -355,7 +366,7 @@ export const WorkflowBuilder: React.FC = () => {
     <div className="flex flex-col h-full w-full bg-app-bg overflow-hidden relative">
       {/* Top Header Bar */}
       <div className="h-14 bg-secondary-bg border-b border-border px-4 flex items-center justify-between z-20 shrink-0">
-        <div className="flex items-center gap-3 flex-1 max-w-md">
+        <div className="flex items-center gap-3 flex-1 max-w-xl">
           <button
             onClick={() => navigate('/workflows')}
             className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-panel rounded transition-colors"
@@ -363,7 +374,7 @@ export const WorkflowBuilder: React.FC = () => {
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col justify-center">
             <input
               type="text"
               value={workflowName}
@@ -371,10 +382,27 @@ export const WorkflowBuilder: React.FC = () => {
               className="w-full bg-transparent font-semibold text-sm text-text-primary focus:outline-none focus:border-b focus:border-yellow"
               placeholder="Workflow Name"
             />
+            <input
+              type="text"
+              value={workflowDesc}
+              onChange={(e) => setWorkflowDesc(e.target.value)}
+              className="w-full bg-transparent text-xs text-text-secondary placeholder-text-secondary/50 focus:outline-none focus:text-text-primary"
+              placeholder="Add description..."
+            />
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowSettingsModal(true)}
+            icon={<SettingsIcon className="w-3.5 h-3.5 text-text-secondary hover:text-yellow" />}
+            title="Workflow Settings"
+          >
+            Settings
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -603,6 +631,51 @@ export const WorkflowBuilder: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Workflow Settings Dialog */}
+      <Dialog
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+        title="Workflow Execution Settings"
+        description="Configure error handling and execution timeouts for this workflow."
+        confirmLabel="Done"
+        onConfirm={() => setShowSettingsModal(false)}
+      >
+        <div className="space-y-4 pt-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={continueOnFailure}
+              onChange={(e) => setContinueOnFailure(e.target.checked)}
+              className="rounded bg-panel border-border text-yellow focus:ring-yellow"
+            />
+            <span className="text-xs text-text-primary font-medium">
+              Continue execution on failure
+            </span>
+          </label>
+          <p className="text-[11px] text-text-secondary pl-6">
+            When enabled, remaining steps execute even if an earlier step fails assertions.
+          </p>
+
+          <div className="space-y-1.5 pt-2 border-t border-border">
+            <label className="text-xs text-text-primary font-medium block">
+              Max Execution Time (ms)
+            </label>
+            <input
+              type="number"
+              min={1000}
+              max={600000}
+              step={1000}
+              value={maxExecutionTimeMs}
+              onChange={(e) => setMaxExecutionTimeMs(Number(e.target.value) || 60000)}
+              className="w-full bg-secondary-bg border border-border rounded px-3 py-1.5 text-xs text-text-primary focus:border-yellow focus:outline-none"
+            />
+            <p className="text-[11px] text-text-secondary">
+              Maximum allowed duration before all remaining steps are aborted.
+            </p>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 };

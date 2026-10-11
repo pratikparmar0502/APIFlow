@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import { WorkflowList } from '../src/pages/WorkflowList';
@@ -33,7 +33,7 @@ vi.mock('../src/api/client', () => ({
 }));
 
 describe('WorkflowList Component', () => {
-  it('renders workflow search bar and workflow list', async () => {
+  it('renders workflow search bar, workflow name, and workflow description', async () => {
     render(
       <BrowserRouter>
         <WorkflowList />
@@ -41,5 +41,9 @@ describe('WorkflowList Component', () => {
     );
 
     expect(screen.getByPlaceholderText(/Search workflows.../i)).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+      expect(screen.getByText('First test description')).toBeInTheDocument();
+    });
   });
 });
