@@ -3,8 +3,9 @@ import { validateOutboundUrl } from '../utils/ssrf';
 import { ExecuteRequestInput, ExecuteRequestResult, Header, QueryParam } from '../types';
 
 const SENSITIVE_HEADERS = new Set([
-  'authorization', 'cookie', 'set-cookie', 'x-api-key', 'api-key',
-  'x-auth-token', 'x-access-token', 'x-secret-key',
+  'authorization', 'proxy-authorization', 'cookie', 'set-cookie',
+  'x-api-key', 'api-key', 'x-auth-token', 'x-access-token',
+  'x-secret-key', 'token', 'session', 'x-session-id',
 ]);
 
 export function redactHeaders(headers: Record<string, string>): Record<string, string> {

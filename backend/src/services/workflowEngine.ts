@@ -230,8 +230,18 @@ async function executeStep(
       return stepResult;
     }
 
-    // Evaluate assertions
-    const assertionResults = evaluateAssertions(cfg.assertions || [], response);
+    // Evaluate assertions with interpolated variables
+    const resolvedAssertions = (cfg.assertions || []).map(rawAssertion => {
+      const a = typeof (rawAssertion as any).toObject === 'function' 
+        ? (rawAssertion as any).toObject() 
+        : { ...rawAssertion };
+      if (typeof a.expected === 'string') {
+        const { result } = interpolateVariables(a.expected, variables);
+        return { ...a, expected: result };
+      }
+      return a;
+    });
+    const assertionResults = evaluateAssertions(resolvedAssertions, response);
     stepResult.assertionResults = assertionResults;
     const assertionsFailed = assertionResults.some(a => !a.passed);
 
