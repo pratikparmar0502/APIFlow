@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { buildFinalUrl, buildHeaders, redactHeaders } from '../src/services/requestExecutor';
 
 describe('Request Executor Utilities', () => {
@@ -41,13 +41,23 @@ describe('Request Executor Utilities', () => {
 
   it('correctly handles request timeouts and produces descriptive error', async () => {
     const { executeRequest } = await import('../src/services/requestExecutor');
-    // Using an unreachable public IP or a delayed request with 100ms timeout
-    const result = await executeRequest({
-      url: 'https://httpbin.org/delay/5',
-      method: 'GET',
-      timeoutMs: 100,
-    });
-    expect(result.status).toBe(0);
-    expect(result.error).toMatch(/timed out after 100ms|blocked/i);
+    vi.stubGlobal('fetch', (_url: string, options: RequestInit) => new Promise((_, reject) => {
+      options.signal?.addEventListener('abort', () => {
+        const error = new Error('Aborted');
+        error.name = 'AbortError';
+        reject(error);
+      });
+    }));
+    try {
+      const result = await executeRequest({
+        url: 'https://8.8.8.8/dns-query',
+        method: 'GET',
+        timeoutMs: 100,
+      });
+      expect(result.status).toBe(0);
+      expect(result.error).toMatch(/timed out after 100ms/i);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

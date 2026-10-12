@@ -86,6 +86,15 @@ describe('Variable Interpolation & Extraction', () => {
       expect(extractJsonPath(specialPayload, '$.falseVal')).toEqual({ value: false, found: true });
       expect(extractJsonPath(specialPayload, '$.emptyStr')).toEqual({ value: '', found: true });
     });
+
+    it('fails safely for malformed and expression-based paths', () => {
+      expect(extractJsonPath(payload, '$[?(@.constructor.constructor("return process")())]')).toEqual({
+        value: undefined,
+        found: false,
+      });
+      expect(extractJsonPath(payload, '$..[')).toEqual({ value: undefined, found: false });
+      expect(extractJsonPath(payload, `$${'.a'.repeat(600)}`)).toEqual({ value: undefined, found: false });
+    });
   });
 
   describe('validateVariableName', () => {

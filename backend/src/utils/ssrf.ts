@@ -37,7 +37,7 @@ const CLOUD_METADATA_DOMAINS = [
 function ipv4ToBigInt(ip: string): bigint {
   try {
     const addr = new Address4(ip);
-    return BigInt(addr.bigInteger().toString());
+    return addr.bigInt();
   } catch {
     return -1n;
   }
@@ -62,9 +62,9 @@ function isPrivateIPv6(ip: string): boolean {
     if (addr.isLoopback()) return true;
     if (addr.isLinkLocal()) return true;
     // fc00::/7 - unique local
-    const bigInt = BigInt(addr.bigInteger().toString());
-    const fc00 = BigInt(new Address6('fc00::').bigInteger().toString());
-    const fe00 = BigInt(new Address6('fe00::').bigInteger().toString());
+    const bigInt = addr.bigInt();
+    const fc00 = new Address6('fc00::').bigInt();
+    const fe00 = new Address6('fe00::').bigInt();
     if (bigInt >= fc00 && bigInt < fe00) return true;
     // Check IPv4-mapped IPv6
     if (addr.is4()) {

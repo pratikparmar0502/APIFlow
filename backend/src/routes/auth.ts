@@ -11,12 +11,13 @@ import {
 } from "../utils/auth";
 import { requireAuth } from "../middleware/auth";
 import { authRateLimiter } from "../middleware/rateLimiter";
+import { requireCsrfProtection } from "../middleware/csrf";
 
 const router = Router();
 
 const SignupSchema = z.object({
   email: z.string().trim().email("Please enter a valid email address").max(255),
-  name: z.string().trim().min(1, "Display name is required").max(100),
+  name: z.string().trim().max(100).optional(),
   password: z
     .string()
     .min(8, "Password must be at least 8 characters long")
@@ -48,7 +49,7 @@ router.post("/signup", authRateLimiter, async (req: Request, res: Response, next
 
     const user = new User({
       email: normalizedEmail,
-      name: validated.name,
+      name: validated.name || "APIFlow User",
       passwordHash,
       status: "active",
     });
@@ -122,7 +123,7 @@ router.post("/login", authRateLimiter, async (req: Request, res: Response, next:
 });
 
 // POST /api/v1/auth/logout
-router.post("/logout", (req: Request, res: Response) => {
+router.post("/logout", requireCsrfProtection, (req: Request, res: Response) => {
   clearAuthCookie(res);
   res.json({
     message: "Logged out successfully",

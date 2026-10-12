@@ -4,6 +4,9 @@ import { executeRequest, buildFinalUrl, buildHeaders, redactHeaders } from '../s
 import { interpolateVariables, extractJsonPath, validateVariableName } from '../utils/variables';
 import { evaluateAssertions } from '../utils/assertions';
 import { ExtractionRule, ExtractionResult } from '../types';
+import { requireAuth } from '../middleware/auth';
+import { executionRateLimiter } from '../middleware/rateLimiter';
+import { requireCsrfProtection } from '../middleware/csrf';
 
 const router = Router();
 
@@ -59,7 +62,7 @@ const ExecuteRequestSchema = z.object({
   variables: z.record(z.unknown()).default({}),
 });
 
-router.post('/execute', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/execute', requireAuth, requireCsrfProtection, executionRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = ExecuteRequestSchema.parse(req.body);
     const variables = input.variables;

@@ -30,9 +30,7 @@ describe('SSRF Protection', () => {
     await expect(validateOutboundUrl('http://2130706433')).rejects.toThrow('Destination IP address is not allowed');
   });
 
-  it('allows safe public URLs', async () => {
-    // DNS check for public domains
-    await expect(validateOutboundUrl('https://httpbin.org/get')).resolves.toBeUndefined();
-    await expect(validateOutboundUrl('https://api.github.com')).resolves.toBeUndefined();
+  it('allows a safe public URL without making a network request', async () => {
+    await expect(validateOutboundUrl('https://8.8.8.8/dns-query')).resolves.toBeUndefined();
   });
 });

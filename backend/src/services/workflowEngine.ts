@@ -15,17 +15,13 @@ let activeExecutions = 0;
 export async function executeWorkflow(
   workflowId: string,
   initialVariables: VariableContext = {},
-  userId?: string
+  userId: string
 ): Promise<string> {
   if (activeExecutions >= config.maxConcurrentExecutions) {
     throw new Error('Maximum concurrent executions reached. Please try again later.');
   }
 
-  const query: Record<string, unknown> = { _id: workflowId };
-  if (userId) {
-    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
-  }
-  const workflow = await Workflow.findOne(query);
+  const workflow = await Workflow.findOne({ _id: workflowId, userId });
   if (!workflow) {
     throw new Error(`Workflow not found or access denied: ${workflowId}`);
   }
@@ -38,7 +34,7 @@ export async function executeWorkflow(
 
   // Create execution record
   const execution = new Execution({
-    userId: userId || workflow.userId,
+    userId,
     workflowId: workflow._id,
     workflowName: workflow.name,
     workflowSnapshot: {
