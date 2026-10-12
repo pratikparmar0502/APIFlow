@@ -8,11 +8,22 @@ import { RequestTester } from './pages/RequestTester';
 import { ExecutionHistory } from './pages/ExecutionHistory';
 import { ExecutionDetail } from './pages/ExecutionDetail';
 import { Settings } from './pages/Settings';
+import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
 export const App: React.FC = () => {
   return (
     <Routes>
-      <Route element={<MainLayout />}>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route
+        element={
+          <ProtectedRoute>
+            <MainLayout />
+          </ProtectedRoute>
+        }
+      >
         <Route path="/" element={<Dashboard />} />
         <Route path="/workflows" element={<WorkflowList />} />
         <Route path="/workflows/new" element={<WorkflowBuilder />} />
@@ -27,3 +38,4 @@ export const App: React.FC = () => {
 };
 
 export default App;
+

@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { WorkflowNode, WorkflowEdge, WorkflowSettings } from '../types';
 
 export interface IWorkflow extends Document {
+  userId?: mongoose.Types.ObjectId;
   name: string;
   description: string;
   nodes: WorkflowNode[];
@@ -75,6 +76,7 @@ const WorkflowSettingsSchema = new Schema({
 }, { _id: false });
 
 const WorkflowSchema = new Schema<IWorkflow>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   name: { type: String, required: true, trim: true, maxlength: 200 },
   description: { type: String, default: '', maxlength: 1000 },
   nodes: { type: [WorkflowNodeSchema], default: [] },
@@ -86,6 +88,8 @@ const WorkflowSchema = new Schema<IWorkflow>({
   versionKey: false,
 });
 
+WorkflowSchema.index({ userId: 1, createdAt: -1 });
+WorkflowSchema.index({ userId: 1, name: 1 });
 WorkflowSchema.index({ name: 1 });
 WorkflowSchema.index({ createdAt: -1 });
 WorkflowSchema.index({ updatedAt: -1 });

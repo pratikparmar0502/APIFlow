@@ -1,6 +1,7 @@
 import { Execution, IExecution } from '../models/Execution';
 
 export interface ExecutionListOptions {
+  userId?: string;
   workflowId?: string;
   status?: string;
   page?: number;
@@ -19,6 +20,9 @@ export async function listExecutions(options: ExecutionListOptions = {}): Promis
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
+  if (options.userId) {
+    query.$or = [{ userId: options.userId }, { userId: { $exists: false } }, { userId: null }];
+  }
   if (options.workflowId) {
     query.workflowId = options.workflowId;
   }
@@ -40,11 +44,19 @@ export async function listExecutions(options: ExecutionListOptions = {}): Promis
   };
 }
 
-export async function getExecutionById(id: string): Promise<IExecution | null> {
-  return Execution.findById(id);
+export async function getExecutionById(id: string, userId?: string): Promise<IExecution | null> {
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  return Execution.findOne(query);
 }
 
-export async function deleteExecution(id: string): Promise<boolean> {
-  const result = await Execution.findByIdAndDelete(id);
+export async function deleteExecution(id: string, userId?: string): Promise<boolean> {
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  const result = await Execution.findOneAndDelete(query);
   return result !== null;
 }

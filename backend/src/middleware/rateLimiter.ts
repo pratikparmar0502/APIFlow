@@ -21,3 +21,14 @@ export const executionRateLimiter = rateLimit({
     message: 'Too many execution requests, please wait before trying again',
   },
 });
+
+export const authRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Limit each IP to 50 login/signup attempts per 15 min
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    code: 'RATE_LIMIT_EXCEEDED',
+    message: 'Too many authentication attempts from this IP, please try again later',
+  },
+});

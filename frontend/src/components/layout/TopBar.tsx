@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
 import apiClient from '../../api/client';
+import { useAuthStore } from '../../store/authStore';
 
 export interface TopBarProps {
   title?: string;
@@ -9,7 +11,14 @@ export interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ title, actions }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuthStore();
   const [backendHealthy, setBackendHealthy] = useState<boolean | null>(null);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -81,6 +90,33 @@ export const TopBar: React.FC<TopBarProps> = ({ title, actions }) => {
         </div>
 
         {actions && <div className="flex items-center gap-2">{actions}</div>}
+
+        {/* User profile & logout */}
+        {user && (
+          <div className="flex items-center gap-3 pl-3 border-l border-border">
+            <div className="flex items-center gap-2" title={user.email}>
+              <div className="w-7 h-7 rounded-full bg-yellow/20 border border-yellow/40 flex items-center justify-center text-yellow font-bold text-xs uppercase">
+                {user.name ? user.name.charAt(0) : user.email.charAt(0)}
+              </div>
+              <div className="hidden sm:flex flex-col text-left">
+                <span className="text-xs font-medium text-text-primary leading-tight max-w-[120px] truncate">
+                  {user.name || user.email.split('@')[0]}
+                </span>
+                <span className="text-[10px] text-text-secondary leading-tight max-w-[120px] truncate">
+                  {user.email}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-text-secondary hover:text-failure hover:bg-panel transition-colors"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

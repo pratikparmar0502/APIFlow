@@ -10,8 +10,10 @@ import {
 } from '../services/workflowService';
 import { executeWorkflow } from '../services/workflowEngine';
 import { executionRateLimiter } from '../middleware/rateLimiter';
+import { requireAuth } from '../middleware/auth';
 
 const router = Router();
+router.use(requireAuth);
 
 const QueryParamSchema = z.object({
   key: z.string(),
@@ -96,7 +98,9 @@ const ExecuteWorkflowSchema = z.object({
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { search, page, limit, sortBy, sortOrder } = req.query;
+    const userId = req.user?.userId;
     const result = await listWorkflows({
+      userId,
       search: typeof search === 'string' ? search : undefined,
       page: page ? parseInt(page as string, 10) : undefined,
       limit: limit ? parseInt(limit as string, 10) : undefined,
@@ -113,7 +117,8 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.post('/', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validated = CreateWorkflowSchema.parse(req.body);
-    const workflow = await createWorkflow(validated);
+    const userId = req.user?.userId;
+    const workflow = await createWorkflow({ ...validated, userId });
     res.status(201).json(workflow);
   } catch (err) {
     next(err);
@@ -123,7 +128,8 @@ router.post('/', async (req: Request, res: Response, next: NextFunction) => {
 // GET /api/v1/workflows/:id
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const workflow = await getWorkflowById(req.params.id);
+    const userId = req.user?.userId;
+    const workflow = await getWorkflowById(req.params.id, userId);
     if (!workflow) {
       res.status(404).json({ code: 'NOT_FOUND', message: 'Workflow not found' });
       return;
@@ -138,7 +144,8 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validated = UpdateWorkflowSchema.parse(req.body);
-    const updated = await updateWorkflow(req.params.id, validated);
+    const userId = req.user?.userId;
+    const updated = await updateWorkflow(req.params.id, validated, userId);
     if (!updated) {
       res.status(404).json({ code: 'NOT_FOUND', message: 'Workflow not found' });
       return;
@@ -152,7 +159,8 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 // DELETE /api/v1/workflows/:id
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const deleted = await deleteWorkflow(req.params.id);
+    const userId = req.user?.userId;
+    const deleted = await deleteWorkflow(req.params.id, userId);
     if (!deleted) {
       res.status(404).json({ code: 'NOT_FOUND', message: 'Workflow not found' });
       return;
@@ -166,7 +174,8 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction) =>
 // POST /api/v1/workflows/:id/duplicate
 router.post('/:id/duplicate', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const duplicate = await duplicateWorkflow(req.params.id);
+    const userId = req.user?.userId;
+    const duplicate = await duplicateWorkflow(req.params.id, userId);
     if (!duplicate) {
       res.status(404).json({ code: 'NOT_FOUND', message: 'Workflow not found' });
       return;
@@ -181,7 +190,8 @@ router.post('/:id/duplicate', async (req: Request, res: Response, next: NextFunc
 router.post('/:id/execute', executionRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const validated = ExecuteWorkflowSchema.parse(req.body || {});
-    const executionId = await executeWorkflow(req.params.id, validated.variables);
+    const userId = req.user?.userId;
+    const executionId = await executeWorkflow(req.params.id, validated.variables, userId);
     res.status(202).json({
       executionId,
       message: 'Workflow execution completed',

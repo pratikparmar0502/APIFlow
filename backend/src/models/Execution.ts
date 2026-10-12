@@ -2,6 +2,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { WorkflowStatus, StepResult } from '../types';
 
 export interface IExecution extends Document {
+  userId?: mongoose.Types.ObjectId;
   workflowId?: mongoose.Types.ObjectId;
   workflowName: string;
   workflowSnapshot: {
@@ -57,6 +58,7 @@ const StepResultSchema = new Schema({
 }, { _id: false });
 
 const ExecutionSchema = new Schema<IExecution>({
+  userId: { type: Schema.Types.ObjectId, ref: 'User', index: true },
   workflowId: { type: Schema.Types.ObjectId, ref: 'Workflow', index: true },
   workflowName: { type: String, required: true },
   workflowSnapshot: {
@@ -78,6 +80,8 @@ const ExecutionSchema = new Schema<IExecution>({
   versionKey: false,
 });
 
+ExecutionSchema.index({ userId: 1, createdAt: -1 });
+ExecutionSchema.index({ userId: 1, workflowId: 1, createdAt: -1 });
 ExecutionSchema.index({ workflowId: 1, createdAt: -1 });
 ExecutionSchema.index({ status: 1 });
 ExecutionSchema.index({ createdAt: -1 });

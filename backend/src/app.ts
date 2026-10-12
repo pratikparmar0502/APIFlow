@@ -1,10 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 import { v4 as uuidv4 } from 'uuid';
 import { corsMiddleware } from './middleware/cors';
 import { apiRateLimiter } from './middleware/rateLimiter';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import healthRoutes from './routes/health';
+import authRoutes from './routes/auth';
 import workflowsRoutes from './routes/workflows';
 import executionsRoutes from './routes/executions';
 import requestsRoutes from './routes/requests';
@@ -14,6 +16,9 @@ export function createApp(): express.Application {
 
   // Basic security headers
   app.use(helmet());
+
+  // Cookie parser
+  app.use(cookieParser());
 
   // CORS
   app.use(corsMiddleware);
@@ -35,6 +40,7 @@ export function createApp(): express.Application {
 
   // Mount API routes
   app.use('/api/v1/health', healthRoutes);
+  app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/workflows', workflowsRoutes);
   app.use('/api/v1/executions', executionsRoutes);
   app.use('/api/v1/requests', requestsRoutes);

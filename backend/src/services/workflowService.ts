@@ -4,6 +4,7 @@ import { validateWorkflowGraph } from '../utils/graphValidator';
 import { config } from '../config/env';
 
 export interface WorkflowListOptions {
+  userId?: string;
   search?: string;
   page?: number;
   limit?: number;
@@ -23,6 +24,10 @@ export async function listWorkflows(options: WorkflowListOptions = {}): Promise<
   const skip = (page - 1) * limit;
 
   const query: Record<string, unknown> = {};
+  if (options.userId) {
+    // Backward compatibility: match either the user's workflows or legacy unowned workflows
+    query.$or = [{ userId: options.userId }, { userId: { $exists: false } }, { userId: null }];
+  }
   if (options.search && options.search.trim()) {
     query.name = { $regex: options.search.trim(), $options: 'i' };
   }
@@ -45,11 +50,16 @@ export async function listWorkflows(options: WorkflowListOptions = {}): Promise<
   };
 }
 
-export async function getWorkflowById(id: string): Promise<IWorkflow | null> {
-  return Workflow.findById(id);
+export async function getWorkflowById(id: string, userId?: string): Promise<IWorkflow | null> {
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  return Workflow.findOne(query);
 }
 
 export async function createWorkflow(data: {
+  userId?: string;
   name: string;
   description?: string;
   nodes?: IWorkflow['nodes'];
@@ -71,6 +81,7 @@ export async function createWorkflow(data: {
   }
 
   const workflow = new Workflow({
+    userId: data.userId,
     name: data.name,
     description: data.description || '',
     nodes,
@@ -89,9 +100,14 @@ export async function updateWorkflow(
     nodes: IWorkflow['nodes'];
     edges: IWorkflow['edges'];
     settings: IWorkflow['settings'];
-  }>
+  }>,
+  userId?: string
 ): Promise<IWorkflow | null> {
-  const existing = await Workflow.findById(id);
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  const existing = await Workflow.findOne(query);
   if (!existing) {
     return null;
   }
@@ -115,23 +131,33 @@ export async function updateWorkflow(
   if (data.nodes !== undefined) existing.nodes = data.nodes;
   if (data.edges !== undefined) existing.edges = data.edges;
   if (data.settings !== undefined) existing.settings = data.settings;
+  if (!existing.userId && userId) existing.userId = userId as any;
 
   return existing.save();
 }
 
-export async function deleteWorkflow(id: string): Promise<boolean> {
-  const deleted = await Workflow.findByIdAndDelete(id);
+export async function deleteWorkflow(id: string, userId?: string): Promise<boolean> {
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  const deleted = await Workflow.findOneAndDelete(query);
   if (!deleted) return false;
   // Also clean up executions associated with this workflow
   await Execution.deleteMany({ workflowId: id });
   return true;
 }
 
-export async function duplicateWorkflow(id: string): Promise<IWorkflow | null> {
-  const original = await Workflow.findById(id).lean();
+export async function duplicateWorkflow(id: string, userId?: string): Promise<IWorkflow | null> {
+  const query: Record<string, unknown> = { _id: id };
+  if (userId) {
+    query.$or = [{ userId }, { userId: { $exists: false } }, { userId: null }];
+  }
+  const original = await Workflow.findOne(query).lean();
   if (!original) return null;
 
   const duplicate = new Workflow({
+    userId: userId || original.userId,
     name: `${original.name} (Copy)`,
     description: original.description,
     nodes: original.nodes,
